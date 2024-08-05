@@ -16,3 +16,5 @@ router.get('/disconnect', AuthController.getDisconnect);
 
 // User information endpoint
 router.get('/users/me', UsersController.getMe);
+
+module.exports = router;
