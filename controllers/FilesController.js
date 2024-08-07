@@ -1,10 +1,10 @@
-const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
-
-const PAGE_SIZE = 20; // Define the constant outside the class
+const dbClient = require('../utils/db');
 
 class FilesController {
-  static async getShow(req, res) {
+  // Existing methods...
+
+  static async putPublish(req, res) {
     const token = req.header('X-Token');
     const { id } = req.params;
 
@@ -28,12 +28,16 @@ class FilesController {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    return res.status(200).json(file);
+    await filesCollection.updateOne({ _id: dbClient.ObjectID(id) }, { $set: { isPublic: true } });
+
+    const updatedFile = await filesCollection.findOne({ _id: dbClient.ObjectID(id) });
+
+    return res.status(200).json(updatedFile);
   }
 
-  static async getIndex(req, res) {
+  static async putUnpublish(req, res) {
     const token = req.header('X-Token');
-    const { parentId = 0, page = 0 } = req.query;
+    const { id } = req.params;
 
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -47,24 +51,19 @@ class FilesController {
 
     const db = await dbClient.connectDB();
     const filesCollection = db.collection('files');
-    const skip = page * PAGE_SIZE;
+    const file = await filesCollection.findOne(
+      { _id: dbClient.ObjectID(id), userId: dbClient.ObjectID(userId) },
+    );
 
-    const files = await filesCollection.aggregate([
-      {
-        $match: {
-          userId: dbClient.ObjectID(userId),
-          parentId: parseInt(parentId, 10),
-        },
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: PAGE_SIZE,
-      },
-    ]).toArray();
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
 
-    return res.status(200).json(files);
+    await filesCollection.updateOne({ _id: dbClient.ObjectID(id) }, { $set: { isPublic: false } });
+
+    const updatedFile = await filesCollection.findOne({ _id: dbClient.ObjectID(id) });
+
+    return res.status(200).json(updatedFile);
   }
 }
 
