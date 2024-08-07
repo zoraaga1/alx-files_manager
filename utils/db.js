@@ -1,48 +1,32 @@
-// utils/db.js
+const { MongoClient, ObjectID } = require('mongodb');
 
-const { MongoClient } = require('mongodb');
+const client = new MongoClient('mongodb://localhost:27017', { useNewUrlParser: true, useUnifiedTopology: true });
+const dbName = 'yourDatabaseName';
 
-class DBClient {
-  constructor() {
-    const host = process.env.DB_HOST || 'localhost';
-    const port = process.env.DB_PORT || 27017;
-    const database = process.env.DB_DATABASE || 'files_manager';
-    const url = `mongodb://${host}:${port}`;
+let db;
 
-    this.client = new MongoClient(url, { useUnifiedTopology: true });
-    this.dbName = database;
-    this.client.connect()
-      .then(() => {
-        console.log('Connected successfully to MongoDB');
-      })
-      .catch((err) => {
-        console.error('MongoDB connection error:', err);
-      });
+async function connectDB() {
+  if (!db) {
+    await client.connect();
+    db = client.db(dbName);
   }
-
-  isAlive() {
-    return this.client && this.client.isConnected();
-  }
-
-  async nbUsers() {
-    if (!this.isAlive()) {
-      return 0;
-    }
-
-    const db = this.client.db(this.dbName);
-    return db.collection('users').countDocuments();
-  }
-
-  async nbFiles() {
-    if (!this.isAlive()) {
-      return 0;
-    }
-
-    const db = this.client.db(this.dbName);
-    return db.collection('files').countDocuments();
-  }
+  return db;
 }
 
-// Export an instance of DBClient
-const dbClient = new DBClient();
-module.exports = dbClient;
+module.exports = {
+  async connectDB() {
+    if (!db) {
+      await client.connect();
+      db = client.db(dbName);
+    }
+    return db;
+  },
+  get db() {
+    return db;
+  },
+  async users() {
+    const db = await connectDB();
+    return db.collection('users');
+  },
+  ObjectID,
+};
