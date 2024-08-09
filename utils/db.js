@@ -1,32 +1,33 @@
-const { MongoClient, ObjectID } = require('mongodb');
+const { MongoClient } = require('mongodb');
 
-const client = new MongoClient('mongodb://localhost:27017', { useNewUrlParser: true, useUnifiedTopology: true });
-const dbName = 'yourDatabaseName';
+class DBClient {
+  constructor() {
+    const host = process.env.DB_HOST || 'localhost';
+    const port = process.env.DB_PORT || 27017;
+    const database = process.env.DB_DATABASE || 'files_manager';
 
-let db;
+    const url = `mongodb://${host}:${port}`;
+    this.client = new MongoClient(url, { useNewUrlParser: true, useUnifiedTopology: true });
 
-async function connectDB() {
-  if (!db) {
-    await client.connect();
-    db = client.db(dbName);
+    this.client.connect().then(() => {
+      this.db = this.client.db(database);
+    }).catch((err) => {
+      console.error('MongoDB connection error:', err);
+    });
   }
-  return db;
+
+  isAlive() {
+    return this.client.isConnected();
+  }
+
+  async nbUsers() {
+    return this.db.collection('users').countDocuments();
+  }
+
+  async nbFiles() {
+    return this.db.collection('files').countDocuments();
+  }
 }
 
-module.exports = {
-  async connectDB() {
-    if (!db) {
-      await client.connect();
-      db = client.db(dbName);
-    }
-    return db;
-  },
-  get db() {
-    return db;
-  },
-  async users() {
-    const db = await connectDB();
-    return db.collection('users');
-  },
-  ObjectID,
-};
+const dbClient = new DBClient();
+module.exports = dbClient;
